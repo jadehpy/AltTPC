@@ -1,0 +1,6 @@
+
+const code asd = @{
+	@msg.show "testcode2", br, var1
+}
+
+asd
