@@ -144,4 +144,6 @@ err(string)でコンパイルを停止してエラーを吐かせます。コー
 <br><br><br>
 
 ### その他いろいろ
-Array<T>とかDictionary<T, T>とかRegexとか予定中だけど未定です。
+ArrayとかDictionaryとかRegexとか予定中だけど未定です。
+
+<br><br><br>
