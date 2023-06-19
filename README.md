@@ -18,6 +18,8 @@ TPCの方言です。<br>
 ```
 v[] a = v[1];  // v[定数数値] しか受け付けない型
 const string b = "c" + "d";
+number c = 4.5;  // 整数もしくは小数の数値　内部的にはint/float
+bool d = c.isFloat()  // true
 ```
 <br><br><br>
 
