@@ -88,7 +88,7 @@ temp v[201 .. 300];
 {
   temp_v qwe = 3;  // v[1..100]およびv[201..300]のうちどれかが予約され、スコープ内でqweという名前で使える
   @qwe = 4;
-}  // スコープを出ると勝手に解放されるほか、qwe.free()で明示的に解放も可能
+};  // スコープを出ると勝手に解放されるほか、qwe.free()で明示的に解放も可能
 ```
 ちなみに宣言時に初期化しないと何が入ってるか分かりません。恐ろしいことに。
 
@@ -104,7 +104,7 @@ func number TestFunction(number a, number b) {
   number c = a + b;
   @msg.show c;
   return c;
-}
+};
 
 // この位置に@msg.show "7"が発生する
 v[1] = TestFunction(3, 4);  // v[1] = 7
@@ -113,7 +113,7 @@ v[1] = TestFunction(3, 4);  // v[1] = 7
 temp v[1];
 func v[] ccc(v[] a, number b) {
   return v[a + b]
-}
+};
 
 // この位置に v[1] = v[v[5] + 2] が発生する
 @party.money $.add( ccc(v[5], 2) );  // 実際は @party.money .add(v[1]) となる
@@ -132,12 +132,12 @@ class Harpy {
   new(v[] adr) {  // コンストラクタ。生成時に使う処理で、これはv[]を引数に取る
     this.address = adr;  // thisでメンバアクセスができる
     @this.HP() = 40;
-  }
+  };
 
   v[] HP() { 
     return v[this.address.ext() + 1];  // v[].ext()はv[]の中身を出す。つまりaddressの変数の次の番号の変数を返す
-  }
-}
+  };
+};
 
 Harpy imouto = new( v[1] );  // // 宣言。同時にv[2] = 40というコマンドも出力
 @imouto.HP -= 5;  // v[2] -= 5。引数を持たないメソッドは()を省略できる
@@ -156,7 +156,7 @@ imouto.address = v[3];  // メンバ書き換えもできる
 vanilla {
   v[1] = 2
   t[2] .asg "asd"
-}
+};
 ```
 <br><br><br>
 
