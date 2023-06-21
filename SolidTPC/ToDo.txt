@@ -1,0 +1,79 @@
+﻿
+◆ Parserの実装
+
+	◆ トークン抽出
+	◆ PENDINGの解決
+	◆ ルートのVOIDチェック
+
+
+
+
+◇ NodeControllerの実装
+
+	◇ 基本構文の実装
+		◆ メインコマンド・サブコマンドの解釈
+		◇ 式解釈
+			◇ 数学演算子
+				◇ 二項演算子
+				◇ 三項演算子
+			◇ 鍵括弧
+			◆ 丸括弧
+			◇ インデックスアクセス
+		◇ メタ変数宣言
+		◇ スコープ
+	◇ 特殊構文の実装
+		◇ tkv
+		◇ temp
+		◇ Array
+		◇ Dictionary
+		◇ クラス宣言
+			◇ 継承宣言
+		◇ ループ
+		◇ 分岐
+		◇ インクルード
+
+
+
+◇ Methodsの実装
+
+	◇ 組み込みメソッド
+
+		◇ string
+			◆ length
+			◆ substr
+			◆ substr_rev
+			◇ remove
+			◇ remove_rev
+			◇ regex
+			◆ at
+		◆ number
+			◆ isFloat
+			◆ toStr
+			◆ to0x
+			◆ to0b
+			◆ floor
+		◇ bool
+			◇ toNum
+			◇ toStr
+		◇ v[]
+			◇ ext
+			◇ toStr
+
+	◇ クラスメソッド
+
+
+◇ Generatorの実装
+
+	◇ 基本出力
+		◇ メタ変数への演算
+		◇ tempへの置き換え
+		◇ tpcへの丸投げ
+	◇ イベントごとに分けて出力
+		◇ イベントの切り離し
+		◇ イベント重複時の警告
+		◆ 出力したコードのハッシュ作成
+		◇ ハッシュとの重複判定によるイベントの出力スキップ
+
+
+
+
