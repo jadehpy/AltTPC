@@ -9,7 +9,7 @@ namespace SolidTPC {
 
         // エラーメッセージ定数
 
-        public static string
+        public const string
 
             TPC_Does_Not_Exist = "tpc.exeが同ディレクトリに存在しません",
 
@@ -54,6 +54,56 @@ namespace SolidTPC {
             Cannnot_Resolve_Token = "定義されていない識別子です",
 
             Source_Does_Not_Exist = "ソースファイルが存在しません",
+
+            Invalid_Value_In_Range_Operator = "範囲指定演算子には数値か式を2つ指定する必要があります",
+
+            Invalid_Token_In_TKV = "v[], s[], t[] の中には数値およびv[]が必要です",
+
+            Invalid_Statement = "ステートメントはイベントコマンド、宣言、代入式、フロー制御文のどれかである必要があります",
+
+            Operator_Range_With_1_Argument_Must_Have_Number = "範囲指定演算子に与えられる要素が一つの場合は要素は数値である必要があります",
+
+            Operator_Range_In_Index_Access_Must_Have_Number = "インデックスアクセスに使用する範囲指定演算子に与えられる要素は数値である必要があります",
+
+            Token_Cannot_Be_Accessed_By_Index = "インデックスアクセスが不可能なトークンです",
+
+            No_Element_In_Array = "配列内に要素がありません",
+
+            No_Index = "インデックスがありません",
+
+            Invalid_Index = "配列へのアクセスに用いるインデックスには数値および数式が必要となります",
+
+            Too_Many_Tokens_In_Index_Bracket = "インデックスアクセスに用いる[]内の要素が多すぎます",
+
+            Mixed_Type_In_Array = "配列内に複数の型が混在しています",
+
+            Invalid_Token_After_Type_Declaration = "宣言をする際は型名の後に有効な定義名が必要です",
+
+            Invalid_Token_After_Modifier = "修飾子の後には修飾子もしくは型名が必要です",
+
+            Block_Must_Exist_After_Function_Declaration = "関数宣言の後にはブロックが必要です",
+
+            Bracket_Is_Not_Closed = "括弧が閉じていません",
+
+            Too_Many_Arguments_After_Type_Declaration = "型宣言の後の引数が多すぎます",
+
+            Invalid_Value_In_Args_Of_Function_Declaration = "関数宣言の引数が無効です",
+
+            Invalid_Declaration = "無効な宣言です",
+
+            Invalid_Class_Declaration = "無効なクラス宣言です",
+
+            No_Bracket_Is_Needed_In_Class_Declaration = "クラスの宣言を行う際に定義名に括弧は不要です",
+
+            Type_Cannot_Be_Enclosed_By_Bracket = "型名を括弧で括ることはできません",
+
+            Declaration_Keyword_Cannot_Be_Enclosed_By_Bracket = "クラス・関数宣言子を括弧で括ることはできません",
+
+            Invalid_Function_Declaration = "無効な関数宣言です",
+
+            Type_Must_Exist_After_Function_Declaration = "関数宣言の後には型名が必要です",
+
+            Bracket_Is_Needed_In_Function_Declaration = "関数の宣言を行う際に定義名には括弧を付ける必要があります",
 
 
 

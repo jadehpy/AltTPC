@@ -22,52 +22,7 @@ namespace SolidTPC {
         public static int SubCommandIndex = -1;
         public static int ArgumentIndex = -1;
 
-        public class Source {
-            public string code = "";
-            public string filename;
-            public bool exists;
-            public int i = 0;
-            public int length = 0;
-            public int line = 0;
-            public int indexInSourceList;
-            public Source(string f) {
-
-                if (true) {
-                    filename = "testcode";
-                    exists = true;
-                    code = TestCode.GetCode() + "; ";
-                    length = code.Length;
-                    indexInSourceList = AddSourceToList(filename, code);
-
-                } else {
-
-                    FileInfo file = new(f);
-                    exists = file.Exists;
-                    filename = file.FullName;
-                    if (file.Exists) {
-                        using StreamReader sr = new(file.FullName);
-                        code = sr.ReadToEnd();
-                        length = code.Length;
-                    }
-                    indexInSourceList = AddSourceToList(file.FullName, code + "; ");
-                }
-            }
-            public char GetChar() {
-                return code[i];
-            }
-        }
-
-
-        public class SourceItem {
-            public string name;
-            public string code;
-            public SourceItem(string name, string code) {
-                this.name = name;
-                this.code = code;
-            }
-        }
-
-
+     
         public static bool escaping = false;
 
         public static List<SourceItem> sourceList = new();  // 読み込んだソースのリスト
@@ -142,7 +97,7 @@ namespace SolidTPC {
                 void NodeDown() => NodePosition.Add(node.child.Count - 1);
 
 
-                switch (node.type) {
+                switch (node.baseType) {
 
 
                     // 数値 ======================================================================================================================================================
@@ -171,7 +126,7 @@ namespace SolidTPC {
                                     node.child.Add(n);
                                     word.Clear();
                                 }
-                                NodeController.CheckNodeClose(node, '\"');
+                                Node_CheckType.CheckNodeClose(node, '\"');
                                 NodeUp();
 
 
@@ -263,17 +218,19 @@ namespace SolidTPC {
 
                         void AddNode(string token) {
 
+                            //m.s(NodesToString(tree));
+
                             // セミコロンで一番直近のブロックノードに遡る
 
                             if (token[0] == ';') {
 
-                                if (node.type != NodeType.BLOCK) {
+                                if (node.baseType != NodeType.BLOCK) {
 
                                     while (true) {
 
                                         var n = Node.GetNode(tree, NodePosition);
 
-                                        if (n.type == NodeType.BLOCK) break;
+                                        if (n.baseType == NodeType.BLOCK) break;
 
                                         NodeUp();
 
@@ -283,14 +240,14 @@ namespace SolidTPC {
 
                                 var bn = Node.GetNode(tree, NodePosition);
                                 
-                                if (bn.child.Count > 0 && !bn.child.Last().isClosed) {
+                                if (bn.child.Count > 0 && !bn.child.Last().isClosed && bn.child.Last().returnedType == NodeType.PENDING) {
 
                                     // ブロックノード中の終端ノードに終了フラグを付加
                                     var bnc = bn.child.Last();
                                     bnc.isClosed = true;
 
                                     // ノードを解決
-                                    NodeController.ResolveNode(bnc, ref resolve_all, ref resolve_any);
+                                    Node_CheckType.ResolveNode(bnc, ref resolve_all, ref resolve_any);
 
                                     if (bnc.returnedType == NodeType.PENDING) {
 
@@ -330,12 +287,12 @@ namespace SolidTPC {
 
                                 Node n = new(token);
 
-                                if (n.oprArgumentNum > 1) {  // 生成したノードが複項演算子である場合
+                                if (n.oprArgumentNum > 1) {  // 生成したノードが二項演算子である場合
 
                                     if (node.child.Count == 0 || node.child.Last().isClosed ||  // 直前のノードが利用不能
                                         node.oprArgumentNum > 0 && node.child.Count != node.oprArgumentNum) {   // もしくは現在のノードの子が必要数に達していない
 
-                                        if (n.type == NodeType.OPERATOR_PM) {  // +/-なら符号演算子として処理
+                                        if (n.baseType == NodeType.OPERATOR_PM || n.baseType == NodeType.OPERATOR_RANGE) {  // +, -, .. は単項演算子として処理
 
                                             n.oprArgumentNum = 1;
                                             node.child.Add(n);
@@ -354,7 +311,7 @@ namespace SolidTPC {
 
                                             Node n_ = Node.GetNode(tree, NodePosition);
 
-                                            if (n.type < n_.type) {  // 作成したノードが優先度が高い場合、そこで遡るのを止める
+                                            if (n.baseType < n_.baseType || n_.isBracket) {  // 作成したノードが優先度が高い場合、そこで遡るのを止める
 
                                                 Node nm = n_.child.Last();
                                                 n_.child.RemoveAt(n_.child.Count - 1);
@@ -373,10 +330,10 @@ namespace SolidTPC {
                                         }
                                     }
 
-                                } else {  // 生成したノードが演算子でない場合
+                                } else {  // 生成したノードが複項演算子でない場合
 
                                     // 名前に丸括弧を付けた場合、名前の子に丸括弧を挿入
-                                    if (n.type == NodeType.BRACKET && node.child.Count > 0 && node.child.Last().type == NodeType.NAME && !node.child.Last().isClosed) {
+                                    if (n.baseType == NodeType.BRACKET && node.oprArgumentNum < 1 && node.child.Count > 0 && node.child.Last().baseType == NodeType.NAME && !node.child.Last().isClosed) {
 
                                         node.child.Last().child.Add(n);
                                         n.parent = node.child.Last();
@@ -384,10 +341,23 @@ namespace SolidTPC {
                                         NodeDown();
                                         NodePosition.Add(0);
 
+                                    } else if (n.baseType == NodeType.BRACKET_SQUARE_ARR && node.child.Count > 0 && !node.child.Last().isClosed) {
+
+                                        // 直前のノードが閉じてない状態で鍵括弧をつけた場合、インデックスアクセス
+
+                                        n.baseType = NodeType.BRACKET_SQUARE_IDX;
+                                        var n_ = node.child.Last();
+                                        node.child.RemoveAt(node.child.Count - 1);
+                                        node.child.Add(n);
+                                        n.parent = node;
+                                        n.child.Add(n_);
+                                        n_.parent = n;
+                                        NodeDown();
+
                                     } else {
 
                                         if (node.oprArgumentNum > 0 && node.oprArgumentNum == node.child.Count ||   // 親が値を必要数持った演算子か
-                                            node.type == NodeType.NAME && node.hasChild) {                          // 括弧が閉じた関数の場合
+                                            node.baseType == NodeType.NAME && node.hasChild) {                          // 括弧が閉じた関数の場合
 
                                             NodeUp();
 
@@ -396,7 +366,7 @@ namespace SolidTPC {
                                                 var n_ = Node.GetNode(tree, NodePosition);
 
                                                 if (n_.oprArgumentNum > 0 && n_.oprArgumentNum == n_.child.Count ||
-                                                    n_.type == NodeType.NAME && n_.hasChild) {
+                                                    n_.baseType == NodeType.NAME && n_.hasChild) {
 
                                                     NodeUp();
 
@@ -410,8 +380,20 @@ namespace SolidTPC {
                                             var n__ = Node.GetNode(tree, NodePosition);
 
                                             if (!n__.child.Last().isClosed) {
-                                                // 直前のノードが閉じていない場合はセミコロン付け忘れ
-                                                throw Error.Call(Error.Semicolon_Does_Not_Exist, n);
+
+                                                if (node.baseType == NodeType.NAME && node.parent.baseType == NodeType.TYPE) {  // 型名 - 名前 - 丸括弧という構成だった場合は関数とする
+
+                                                    if (n.baseType != NodeType.BLOCK) {
+
+                                                        throw Error.Call(Error.Block_Must_Exist_After_Function_Declaration, n);
+
+                                                    }
+
+                                                } else {  // 関数ではなく、かつ直前のノードが閉じていない場合はセミコロン付け忘れ
+
+                                                    throw Error.Call(Error.Semicolon_Does_Not_Exist, n);
+
+                                                }
                                             }
 
                                             n__.child.Add(n);
@@ -523,14 +505,18 @@ namespace SolidTPC {
 
                                             if (n.endToken == c) {
 
-                                                NodeController.CheckNodeClose(n, c);
+                                                Node_CheckType.CheckNodeClose(n, c);
                                                 NodeUp();
 
                                                 break;
 
                                             } else {
 
-                                                NodeController.CheckNodeClose(n, null);
+                                                Node ne = new(c.ToString(), NodeType.PENDING, NodeType.PENDING);
+
+                                                if (n.isBracket) throw Error.Call(Error.Invalid_Close_Token, ne);
+
+                                                Node_CheckType.CheckNodeClose(n, null);
                                                 NodeUp();
 
                                             }
@@ -561,6 +547,13 @@ namespace SolidTPC {
                 }
             }
 
+            if (NodePosition.Count > 1) {
+
+                throw Error.Call(Error.Bracket_Is_Not_Closed, Node.GetNode(tree, NodePosition));
+
+            }
+
+
             // PENDINGリストを解決
 
             while (PendingList.Count > 0) {
@@ -571,7 +564,7 @@ namespace SolidTPC {
 
                     resolve_all = true;
 
-                    NodeController.ResolveNode(PendingList[i], ref resolve_all, ref resolve_any);
+                    Node_CheckType.ResolveNode(PendingList[i], ref resolve_all, ref resolve_any);
 
                     if (resolve_all) {
 
@@ -584,7 +577,7 @@ namespace SolidTPC {
 
                 if (!resolve_any) {  // 一回回して何も解決しなかった場合はエラー
 
-                    Node? nd = NodeController.GetPendingToken(PendingList[0]);
+                    Node? nd = Node_CheckType.GetPendingToken(PendingList[0]);
 
                     throw Error.Call(Error.Cannnot_Resolve_Token, nd ?? PendingList[0]);
 
@@ -592,7 +585,7 @@ namespace SolidTPC {
             }
 
             // ルートノードのチェック　すべてvoidが返ってきているか確認する
-            NodeController.CheckNodeClose(tree, null);
+            Node_CheckType.CheckNodeClose(tree, null);
 
             return tree;
         }
@@ -606,9 +599,14 @@ namespace SolidTPC {
 
             string gn(Node nd, int nest) {
 
-                StringBuilder s = new(getn(nest) + nd.type.ToString() + " -> " + nd.returnedType.ToString() + ": " + nd.word);
+                StringBuilder s = new(getn(nest) + nd.baseType.ToString() + " -> " + nd.returnedType.ToString() + ": " + nd.word);
                 if (nd.isClosed) s.Append(" (Closed)");
                 if (nd.returnedType == NodeType.NUMBER) s.Append(nd.isFloat ? $" (value : {nd.value_f})" : $" (value : {nd.value})");
+                if (nd.returnedType == NodeType.TKV_V || nd.returnedType == NodeType.TKV_VV || 
+                    nd.returnedType == NodeType.TKV_S || nd.returnedType == NodeType.TKV_SV ||
+                    nd.returnedType == NodeType.TKV_T || nd.returnedType == NodeType.TKV_TV) {
+                    s.Append($" (value : {nd.value})");
+                }
                 s.Append("\r\n");
                 foreach (var n in nd.child) {
                     s.Append(gn(n, nest + 1));
@@ -625,35 +623,59 @@ namespace SolidTPC {
                 return s.ToString();
             }
         }
-    }
 
 
 
+        public class Source {
+            public string code = "";
+            public string filename;
+            public bool exists;
+            public int i = 0;
+            public int length = 0;
+            public int line = 0;
+            public int indexInSourceList;
+            public Source(string f) {
 
+                if (true) {
+                    filename = "testcode";
+                    exists = true;
+                    code = TestCode.GetCode() + "; ";
+                    length = code.Length;
+                    indexInSourceList = AddSourceToList(filename, code);
 
+                } else {
 
-    class m {
-
-        public static StringBuilder log = new("log : \r\n\r\n");
-        const bool showMessage = true;
-
-        // デバッグ用
-        public static void s<T>(params T[] s) {
-            StringBuilder sb = new();
-            foreach (T t in s) {
-                if (t is not null) {
-                    sb.Append(t.ToString());
-                    sb.Append("\r\n");
+                    FileInfo file = new(f);
+                    exists = file.Exists;
+                    filename = file.FullName;
+                    if (file.Exists) {
+                        using StreamReader sr = new(file.FullName);
+                        code = sr.ReadToEnd();
+                        length = code.Length;
+                    }
+                    indexInSourceList = AddSourceToList(file.FullName, code + "; ");
                 }
             }
-            if (showMessage) { 
-                MessageBox.Show(sb.ToString()); 
+            public char GetChar() {
+                return code[i];
             }
-            log.Append(sb.ToString() + "\r\n");
         }
 
-        public static void console(string s) {
-            Console.WriteLine(s);
+
+        public class SourceItem {
+            public string name;
+            public string code;
+            public SourceItem(string name, string code) {
+                this.name = name;
+                this.code = code;
+            }
         }
+
     }
+
+
+
+
+
+
 }

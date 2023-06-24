@@ -25,9 +25,11 @@ namespace SolidTPC {
 
         static string Code() {
 
-			return @"1=""0123456789"".substr(2) 
-@msg.show
-;
+			return @"
+
+function number test() { 
+	const number a = 5;
+}
 ";
 
 			

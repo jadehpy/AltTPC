@@ -7,11 +7,21 @@ using System.Text.RegularExpressions;
 
 namespace SolidTPC {
 
-    enum NodeType {
+    enum NodeType {         // 順番を変えるとヤバイ
         ROOT,
         PENDING,
         VOID,
+        TYPE,
+        TYPENAME,           // 子のない型名（型比較時に使う）
+        MODIFIER,           // const, static, private, global
+        CLASS,              // クラス宣言子
+        FUNCTION,           // 関数宣言子
         NAME,               // 定義名
+        BLOCK,
+        BRACKET,            // 引数としての括弧　混在した値を取る
+        BRACKET_TYPE,       // 関数定義時の引数を示す括弧
+        BRACKET_SQUARE_ARR, // 配列扱いの[]
+        BRACKET_SQUARE_IDX, // 添え字扱いの[]
         OPERATOR_PERIOD,    // .
         OPERATOR_SINGLE,    // !, not
         OPERATOR_MDM,       // *, /, %
@@ -28,25 +38,25 @@ namespace SolidTPC {
         OPERATOR_TERNARY,   // ?, :
         OPERATOR_ASG,       // =, +=, -=, *=, /=, %=, |=, &=, ^=, <<=, >>=
         AT,
-        BLOCK,
-        BRACKET,
         COMMAND,            // ピリオドが COMMAND_MAIN.COMMAND_SUB を持つとき、有効な値にこれを返す
         COMMAND_MAIN,
         COMMAND_SUB,
         COMMAND_ARG,
         TKV_V,              // V[ NUMBER ]
         TKV_VV,             // V[V[ NUMBER ]]
-        TKV_VV__,           // 内部にv[]もしくは数値しかない場合
-        TKV_V_RANGE,        // V[(NUMBER) .. (NUMBER)] の形の範囲
         TKV_V_ANY,          // v[~]
+        TKV_V_RANGE,        // コンマ区切りの要素およびa..bを持つv[]
+        TKV_V_RANGE_EXPR,   // 内部に式の項を持つRANGEがあるのでインデックスアクセスができないv[]
         TKV_S,
         TKV_SV,
-        TKV_SV__,
+        TKV_S_ANY,
         TKV_S_RANGE,
+        TKV_S_RANGE_EXPR,
         TKV_T,
         TKV_TV,
-        TKV_TV__,
+        TKV_T_ANY,
         TKV_T_RANGE,
+        TKV_T_RANGE_EXPR,
         TKV_GV,
         TKV_GS,
         TKV_GT,
@@ -57,10 +67,8 @@ namespace SolidTPC {
         BOOL,
         ARRAY,
         DICTIONARY,
-
         BR_MOVEROUTE,
         PRIMITIVE,
-        FUNCTION,
         COM_LINE,           // 行コメント
         COM_RANGE           // 範囲コメント
 
@@ -71,20 +79,35 @@ namespace SolidTPC {
 
     internal class Node {
 
-        public NodeType type;
+
+        // キーワード定数
+        public const string
+            KEYWORD_NUMBER = "number",
+            KEYWORD_STRING = "string",
+            KEYWORD_ARRAY = "array",
+            KEYWORD_DICTIONARY = "dictionary",
+            KEYWORD_FUNCTION = "function",
+            KEYWORD_CLASS = "class",
+            KEYWORD_CONST = "const",
+            KEYWORD_STATIC = "static",
+            KEYWORD_PRIVATE = "private",
+            KEYWORD_GLOBAL = "global";
+        
+
+
+        public NodeType baseType;
         public NodeType returnedType;
         public string word;
         public char endToken = ' ';
         public bool isBracket = false;
         public List<Node> child = new();
         public bool hasChild = false;
-        public string nameSpace = "";
         public int nest = -1;
         public int positionInSource = 0;
         public int indexInSourceList = 0;
 
         public int oprArgumentNum = -83;  // 演算子が持つべき引数の数
-        public bool isClosed = false;  // このノードがもう引数を受け付けないかどうか
+        public bool isClosed = false;  // このノードがもう引数を受け付けないかどうか　コンマまたはセミコロン時にtrueとなる 
 
         // NUMBER用
         public int value = 0;
@@ -93,14 +116,32 @@ namespace SolidTPC {
         public bool isLiteral = true;      // リテラルであるかどうか　!isFloat && isLiteral のノードが2連続した時、それは小数となる
         public bool isFloat = false;
 
+        // ARRAY･Dictionary用
+        public Node? arrayValueType; // ArrayおよびDictionaryでの内部の型　ネストを形作るのでNode
+        public NodeType? arrayKeyType;   // Dictionaryでのキーの型　数値・文字列のみ設定可
+
+        // 名前空間
+        private Dictionary<string, DefinedName>? names;
+
+        public Dictionary<string, DefinedName> Names {
+            get {
+                if (names == null) names = new Dictionary<string, DefinedName>();
+                return names;
+            }
+        }
+
+        // 宣言時
+        public DefinedName? name;
+
+
         public int Value {
             get {
-                return this.isFloat ? (int)this.value_f : this.value;
+                return isFloat ? (int)value_f : value;
             }
         }
 
         public void ReturnNumber(Node n) {
-            n.type = NodeType.NUMBER;
+            n.baseType = NodeType.NUMBER;
             if (isFloat) {
                 n.isFloat = true;
                 n.value_f = value_f;
@@ -125,7 +166,7 @@ namespace SolidTPC {
 
         public Node(string word, NodeType type) {
             this.word = word;
-            this.type = type;
+            baseType = type;
             returnedType = NodeType.PENDING;
             indexInSourceList = Parser.sources.Last().indexInSourceList;
             positionInSource = Parser.sources.Last().i;
@@ -133,7 +174,7 @@ namespace SolidTPC {
 
         public Node(string word, NodeType type, NodeType returnedType) {
             this.word = word;
-            this.type = type;
+            this.baseType = type;
             this.returnedType = returnedType;
             indexInSourceList = Parser.sources.Last().indexInSourceList;
             positionInSource = Parser.sources.Last().i;
@@ -141,11 +182,20 @@ namespace SolidTPC {
 
 
         public static bool isNumberVariable(Node n) {
-            return n.returnedType == NodeType.TKV_V || n.returnedType == NodeType.TKV_VV || n.returnedType == NodeType.TKV_VV__;
+            return n.returnedType == NodeType.TKV_V || n.returnedType == NodeType.TKV_VV || n.returnedType == NodeType.TKV_V_ANY;
         }
 
         public static bool isSwitchVariable(Node n) {
-            return n.returnedType == NodeType.TKV_S || n.returnedType == NodeType.TKV_SV || n.returnedType == NodeType.TKV_SV__;
+            return n.returnedType == NodeType.TKV_S || n.returnedType == NodeType.TKV_SV || n.returnedType == NodeType.TKV_S_ANY;
+        }
+
+        public static bool isAnyExpression(Node n) {
+            return
+                n.returnedType == NodeType.NUMBER || n.returnedType == NodeType.EXPRESSION ||
+                n.returnedType == NodeType.TKV_V || n.returnedType == NodeType.TKV_S
+                //n.returnedType == NodeType.TKV_V || n.returnedType == NodeType.TKV_VV || n.returnedType == NodeType.TKV_V_ANY ||
+                //n.returnedType == NodeType.TKV_S || n.returnedType == NodeType.TKV_SV || n.returnedType == NodeType.TKV_S_ANY
+            ;
         }
 
 
@@ -196,5 +246,25 @@ namespace SolidTPC {
                 }
             }
         }
+    }
+
+
+    class DefinedName {
+
+        public Node link;
+
+        public bool isConst = false;
+        public bool isStatic = false;
+        public bool isPrivate = false;
+
+        public DefinedName(Node link) {
+            this.link = link;
+        }
+    }
+
+    public enum NameType {
+        VARIABLE,
+        CLASS,
+        FUNCTION
     }
 }

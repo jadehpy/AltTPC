@@ -23,6 +23,8 @@ namespace SolidTPC {
 
                 bool hhhh = Commands.DB.ContainsKey("msg");
 
+
+
                 try {
 
 
@@ -50,6 +52,38 @@ namespace SolidTPC {
 
                 }
             }
+        }
+    }
+
+
+
+    class m {
+
+        public static StringBuilder log = new("log : \r\n\r\n");
+        const bool showMessage = false;
+
+        // デバッグ用
+        public static void s<T>(params T[] s) {
+            StringBuilder sb = new();
+            foreach (T t in s) {
+                if (t is not null) {
+                    sb.Append(t.ToString());
+                    sb.Append("\r\n");
+                }
+            }
+            if (showMessage) {
+                MessageBox.Show(sb.ToString());
+            }
+            log.Append(sb.ToString() + "\r\n");
+            Console.WriteLine(sb.ToString());
+        }
+
+        public static void console(string s) {
+            Console.WriteLine(s);
+        }
+
+        public static bool Between(int x, int min, int max) {
+            return (x >= min && x <= max);
         }
     }
 }

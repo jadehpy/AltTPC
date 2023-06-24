@@ -22,6 +22,7 @@ namespace SolidTPC {
         */
 
         public enum FileType {
+            Root,
             CommonEventFile,
             MapEventFile
         }
@@ -29,14 +30,15 @@ namespace SolidTPC {
         public class GeneratedFile {
 
             FileType filetype;
-            string code;
+            public StringBuilder code;
             string hash;
 
 
             public GeneratedFile(FileType ft, string code) {
 
                 filetype = ft;
-                this.code = code;
+                this.code = new();
+                this.code.Append(code);
 
                 var sha = SHA256.Create();
                 var arr1 = Encoding.UTF8.GetBytes(code);
@@ -51,7 +53,7 @@ namespace SolidTPC {
         }
 
 
-        public static void Export(GeneratedFile[] files) {
+        public static void Export(List<GeneratedFile> files) {
 
             DirectoryInfo cdir = new(Path.GetDirectoryName(Application.ExecutablePath));
 
@@ -67,12 +69,14 @@ namespace SolidTPC {
 
 
 
-        public static string Run(Node node) {
+        public static List<GeneratedFile> Run(Node node) {
+
+            List<GeneratedFile> files = new();
+
+            GeneratedFile root = new(FileType.Root, "");
 
 
-
-
-            return "";
+            return files;
         }
     }
 }

@@ -142,9 +142,9 @@ namespace SolidTPC {
                             new[] {
                                 NodeType.STRING,
                                 NodeType.NUMBER,
-                                NodeType.TKV_V, NodeType.TKV_VV__,
-                                NodeType.TKV_S, NodeType.TKV_SV__,
-                                NodeType.TKV_T, NodeType.TKV_TV__
+                                NodeType.TKV_V, NodeType.TKV_VV,
+                                NodeType.TKV_S, NodeType.TKV_SV,
+                                NodeType.TKV_T, NodeType.TKV_TV
                             }
                         })
                     })
