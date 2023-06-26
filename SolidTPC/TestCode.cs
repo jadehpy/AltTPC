@@ -22,14 +22,35 @@ namespace SolidTPC {
 
         }
 
-
-        static string Code() {
+		static string Code() {
 
 			return @"
 
-function number test() { 
-	const number a = 5;
+const number asd = 1;
+
+asd = 2;
+
+
+
+/*
+class test {
+    number q = 1;
+}; // ここのセミコロンを外してテストするのを忘れずに
+*/
+
+func number qwe() {
+
+    prior number asd = 100;
+    global number ccc = 2;
+
+};
+
+/*
+global number {
+    a = 3;
+    b = 4;
 }
+*/
 ";
 
 			

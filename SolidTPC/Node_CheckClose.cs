@@ -160,15 +160,190 @@ namespace SolidTPC {
 
                 case NodeType.NAME:
 
+                    if (node.parent.baseType == NodeType.NAME) {  // クラスのインスタンスの宣言の場合
 
-                    if (node.parent.baseType == NodeType.TYPE) {  // 宣言の場合
+                        node.parent.baseType = NodeType.TYPE;
+
+                    }
+
+
+                    if (node.parent.baseType == NodeType.TYPE) {  // 通常の型の変数の宣言の場合
 
                         node.returnedType = NodeType.NAME;
 
-                        node.name = new(node);
-                        
 
                     } else {  // 展開時
+
+                        var n = Node.GetName(node, node.word, ref Parser.nest);
+
+                        if (n != null) {
+
+                            node.returnedType = NodeType.NAME;
+
+                        }
+                    }
+
+                    break;
+
+                // ──────────────────────────────────────────────────────────────────────
+
+                // イコールの場合
+
+                case NodeType.OPERATOR_ASG:
+
+                    if (node.child.Count != 2) {
+
+                        throw Error.Call(Error.No_Argument_On_The_Right_Side_Of_Binary_Operator, node);
+
+                    }
+
+                    var c1 = node.child[0];
+                    var c2 = node.child[1];
+
+                    if (node.word.Length == 1) {
+
+                        // = の場合
+
+                        if (c1.returnedType == NodeType.TYPE || c1.returnedType == NodeType.MODIFIER) {  // 変数宣言
+
+                            // クラスのメンバである場合
+                            if (node.parent.baseType == NodeType.BLOCK && node.parent.parent != null && node.parent.parent.baseType == NodeType.CLASS) {
+
+                                // global修飾子は利用不能
+                                if (c1.name.isGlobal)   
+                                    throw Error.Call(Error.Modifier_Global_Is_Invalid_In_Class_Member_Declaration, c1.name.link.child[0]);
+
+                            } else {  // クラスのメンバでない場合
+
+                                // private修飾子は利用不能
+                                if (c1.name.isPrivate) 
+                                    throw Error.Call(Error.Modifier_Private_Has_Effect_Only_In_Class_Member_Declaration, c1.name.link.child[0]); 
+                            }
+
+                            if (c1.name.isGlobal) {  // グローバル変数である場合
+
+                                // static修飾子は利用不能
+                                if (c1.name.isStatic) 
+                                    throw Error.Call(Error.Modifier_Static_Cannot_Be_Used_With_Modifier_Global, c1.name.link.child[0]);
+
+                                // prior修飾子は利用不能
+                                if (c1.name.isPrior) 
+                                    throw Error.Call(Error.Modifier_Prior_Cannot_Be_Used_With_Modifier_Global, c1.name.link.child[0]);
+
+                            } 
+
+                            var dn = Node.GetName(node.parent, c1.name.link.child[0].word, ref Parser.nest);
+
+                            if (dn != null) {
+
+                                if (Parser.nest == 0) {  // 同じネストにある
+
+                                    if (dn.isGlobal)  // 既にあるものがglobalで宣言されている
+                                        throw Error.Call(Error.Defined_Global_Name_Is_Duplicated, c1.name.link.child[0], dn.link.child[0]);
+
+                                    throw Error.Call(Error.Defined_Name_Is_Duplicated, c1.name.link.child[0], dn.link.child[0]);
+                                }
+
+                                if (Parser.nest == -1 && c1.name.isGlobal)  // グローバル空間ならエラー
+                                    throw Error.Call(Error.Defined_Global_Name_Is_Duplicated, c1.name.link.child[0], dn.link.child[0]);
+
+
+                                if (!c1.name.isPrior)  // prior演算子がないならエラー
+                                    throw Error.Call(Error.Defined_Name_Is_Duplicated_In_Upper_Block, c1.name.link.child[0], dn.link.child[0]);
+
+                            }
+                                
+                            // 追加
+
+                            if (c1.name.isGlobal) {
+
+                                Parser.tree.Names.Add(c1.name.link.child[0].word, c1.name);
+
+                            } else {
+
+                                var bl = Node.GetNearestBlock(node.parent);
+                                bl.Names.Add(c1.name.link.child[0].word, c1.name);
+
+                            }
+
+                            // 代入される値の型チェック
+
+                            if (c1.name.link.value != (int)c2.returnedType) {
+
+                                throw Error.Call(Error.Type_Of_Assigned_Value_Is_Not_Suited_To_Variable, c2);
+
+                            }
+
+                            node.returnedType = NodeType.VOID;
+
+                            break;
+                        }
+
+
+                        if (c1.returnedType == NodeType.NAME) {
+
+                            var nm = Node.GetName(node.parent, c1.word, ref Parser.nest);
+
+                            // 代入される値の型チェック
+
+                            if (nm.link.value != (int)c2.returnedType) {
+
+                                throw Error.Call(Error.Type_Of_Assigned_Value_Is_Not_Suited_To_Variable, c2);
+
+                            }
+
+                            node.returnedType = NodeType.VOID;
+                        }
+
+                        // Generatorで使う
+
+                        //void asg(Node a, Node b) {
+
+                        //    if (a.name.link.value != (int)b.returnedType) {
+
+                        //        throw Error.Call(Error.Type_Of_Assigned_Value_Is_Not_Suited_To_Variable, c2);
+
+                        //    }
+
+                        //    // 値を格納するためのNodeを生成
+                        //    if (a.name.value == null) {
+
+                        //        a.name.value = new("", NodeType.PENDING, b.returnedType);
+
+                        //        if (b.returnedType == NodeType.STRING) a.name.value.str = new StringBuilder();
+
+                        //    }
+
+                        //    if (a.name.value.returnedType == NodeType.NUMBER) {  // 数値代入
+
+                        //        if (b.isFloat) {
+
+                        //            a.name.value.value_f = b.value_f;
+
+                        //        } else {
+
+                        //            a.name.value.value = b.value;
+
+                        //        }
+                        //        return;
+                        //    }
+
+                        //    if (a.name.value.returnedType == NodeType.STRING) {
+
+                        //        a.name.value.str.Clear();
+                        //        a.name.value.str.Append(b.word);
+
+                        //    }
+
+                        //}
+
+
+
+                    } else if (node.word.Length == 2) {
+
+
+
+                    } else {
 
 
 
@@ -191,20 +366,34 @@ namespace SolidTPC {
                     
 
 
-                    if (node.child.Count == 0) {  // 子がない場合は型名として扱う
+                    if (node.child.Count == 0) {  // 子がない場合は型名として扱う (type)
                         node.returnedType = NodeType.TYPENAME;
                         break;
                     }
 
-                    if (node.child[0].returnedType != NodeType.NAME) {  // 型名の後に有効な定義名がない
+                    if (node.child[0].returnedType != NodeType.NAME) {  // 型名の後に有効な定義名がない  type (無効なトークン)
                         throw Error.Call(Error.Invalid_Token_After_Type_Declaration, node.child[0]); 
                     }
 
                     if (node.child.Count == 1) {
 
-                        if (node.child[0].returnedType == NodeType.NAME) {  // 変数宣言
+                        if (node.child[0].returnedType == NodeType.NAME) {  // 変数宣言  (modifier) type name
                             node.returnedType = NodeType.TYPE;
+                            DefinedName dn = new(node);
+                            node.name = dn;
                             break;
+                        }
+
+                        if (node.child[0].returnedType == NodeType.BLOCK) {  // 一括変数宣言  (modifier) type { name = value }
+
+                            node.returnedType = NodeType.VOID;
+
+                            // ここにブロック内チェック
+
+
+
+                            break;
+
                         }
 
                         throw Error.Call(Error.Invalid_Token_After_Type_Declaration, node.child[0]);
@@ -212,7 +401,7 @@ namespace SolidTPC {
 
                     if (node.child.Count == 2) {
 
-                        if (node.child[0].returnedType == NodeType.NAME && node.child[1].baseType == NodeType.BLOCK) {  // 関数宣言
+                        if (node.child[0].returnedType == NodeType.NAME && node.child[1].returnedType == NodeType.BLOCK) {  // 関数宣言
 
                             node.returnedType = NodeType.TYPE;
                             break;
@@ -220,6 +409,12 @@ namespace SolidTPC {
                         }
 
                         throw Error.Call(Error.Invalid_Declaration, node);
+                    }
+
+                    if (node.child[0].returnedType == NodeType.NAME && node.child[1].returnedType == NodeType.BLOCK) {
+
+                        throw Error.Call(Error.Semicolon_Does_Not_Exist, node.child[2]);
+
                     }
 
                     throw Error.Call(Error.Too_Many_Arguments_After_Type_Declaration, node);
@@ -236,6 +431,10 @@ namespace SolidTPC {
                         if (node.child[0].returnedType == NodeType.MODIFIER ||
                             node.child[0].returnedType == NodeType.TYPE) {
 
+                            // 宣言中の名前の修飾子に追加
+                            node.name = node.child[0].name;
+                            node.name.SetModifier(node.value, true);
+
                             node.returnedType = NodeType.MODIFIER;
                             break;
                         }
@@ -249,7 +448,7 @@ namespace SolidTPC {
 
                 // クラス宣言子の場合
 
-                case NodeType.CLASS:
+                case NodeType.DECL_CLASS:
 
                     if (node.child.Count != 2) {
 
@@ -277,7 +476,7 @@ namespace SolidTPC {
 
                 // 関数宣言子の場合
 
-                case NodeType.FUNCTION:
+                case NodeType.DECL_FUNCTION:
 
                     if (node.child.Count != 1) {
 
@@ -376,7 +575,7 @@ namespace SolidTPC {
 
                         }
 
-                        if (node.child[0].baseType == NodeType.CLASS || node.child[0].baseType == NodeType.FUNCTION) {  // クラス・関数宣言子は括弧で括れない
+                        if (node.child[0].baseType == NodeType.DECL_CLASS || node.child[0].baseType == NodeType.DECL_FUNCTION) {  // クラス・関数宣言子は括弧で括れない
 
                             Error.Call(Error.Declaration_Keyword_Cannot_Be_Enclosed_By_Bracket, node);
 
@@ -590,36 +789,6 @@ namespace SolidTPC {
 
                     throw Error.Call(Error.Too_Many_Tokens_In_Index_Bracket, node);
 
-
-                // ──────────────────────────────────────────────────────────────────────
-
-                // イコールの場合
-
-                case NodeType.OPERATOR_ASG:
-
-                    var c1 = node.child[0];
-                    var c2 = node.child[1];
-
-                    node.returnedType = NodeType.VOID;
-
-                    if (node.word.Length == 1) {
-
-                        // = の場合
-
-                        if (c1.returnedType == NodeType.TKV_V) {
-
-                        }
-
-                    } else if (node.word.Length == 2) {
-
-
-                    } else {
-
-
-
-                    }
-
-                    break;
 
 
                 // ──────────────────────────────────────────────────────────────────────

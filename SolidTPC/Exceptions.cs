@@ -105,6 +105,31 @@ namespace SolidTPC {
 
             Bracket_Is_Needed_In_Function_Declaration = "関数の宣言を行う際に定義名には括弧を付ける必要があります",
 
+            Class_Does_Not_Exist = "現在のスコープにそのクラスは存在しません",
+
+            Name_Is_Not_Class = "型として指定された定義名はクラスではありません",
+
+            Name_Is_Already_Declared_In_Current_Block = "その名前は現在のブロックで既に定義されています",
+
+            Invalid_Place_To_Declare = "宣言する場所が正しくありません",
+
+            Modifier_Private_Has_Effect_Only_In_Class_Member_Declaration = "private修飾子はクラスのメンバに対してのみ有効です",
+
+            Modifier_Global_Is_Invalid_In_Class_Member_Declaration = "global修飾子は",
+
+            Modifier_Static_Cannot_Be_Used_With_Modifier_Global = "static修飾子はglobal修飾子と同時に使うことはできません",
+
+            Modifier_Prior_Cannot_Be_Used_With_Modifier_Global = "prior修飾子はglobal修飾子と同時に使うことはできません",
+
+            Defined_Name_Is_Duplicated = "その変数の定義名は既に同ブロック内で使われています",
+
+            Defined_Global_Name_Is_Duplicated = "その変数の定義名は既にグローバル空間で使われています",
+
+            Defined_Name_Is_Duplicated_In_Upper_Block = "その変数の定義名は既に上位ブロック内で使われています（prior修飾子の利用を検討してください）",
+
+            No_Argument_On_The_Right_Side_Of_Binary_Operator = "二項演算子の右側に値がありません",
+
+            Type_Of_Assigned_Value_Is_Not_Suited_To_Variable = "代入される値の型と変数の型が一致しません",
 
 
             END = "";
@@ -121,17 +146,17 @@ namespace SolidTPC {
             string src = Parser.sourceList[node.indexInSourceList].code;
 
             int line = 1;
-            int idx = 0;
+            int idx = 1;
 
             for (int i = 0; i < node.positionInSource; i++) {
                 idx++;
                 if (src[i] == '\n') {
                     line++;
-                    idx = 0;
+                    idx = 1;
                 }
             }
 
-            return $"{Parser.sourceList[node.indexInSourceList].name}, {line} 行目, {idx} 文字目, \"{node.word}\"";
+            return $"{Parser.sourceList[node.indexInSourceList].name}, {line} 行目, {idx - node.word.Length} 文字目, \"{node.word}\"";
 
         }
 
@@ -140,6 +165,10 @@ namespace SolidTPC {
 
         public static Exception Call(string error, Node node) {
             return new Exception($"{error} : {GetPositionInSource(node)}");
+        }
+
+        public static Exception Call(string error, Node node1, Node node2) {
+            return new Exception($"{error} : {GetPositionInSource(node1)}, {GetPositionInSource(node2)}");
         }
 
         public static Exception Call(string error) {

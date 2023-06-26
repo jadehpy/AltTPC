@@ -14,8 +14,9 @@ namespace SolidTPC {
         TYPE,
         TYPENAME,           // 子のない型名（型比較時に使う）
         MODIFIER,           // const, static, private, global
-        CLASS,              // クラス宣言子
-        FUNCTION,           // 関数宣言子
+        CLASS,              // 何らかのクラスのインスタンス
+        DECL_CLASS,         // クラス宣言子
+        DECL_FUNCTION,      // 関数宣言子
         NAME,               // 定義名
         BLOCK,
         BRACKET,            // 引数としての括弧　混在した値を取る
@@ -67,6 +68,7 @@ namespace SolidTPC {
         BOOL,
         ARRAY,
         DICTIONARY,
+        TYPE_BLOCK,
         BR_MOVEROUTE,
         PRIMITIVE,
         COM_LINE,           // 行コメント
@@ -84,20 +86,24 @@ namespace SolidTPC {
         public const string
             KEYWORD_NUMBER = "number",
             KEYWORD_STRING = "string",
+            KEYWORD_BOOL = "bool",
             KEYWORD_ARRAY = "array",
-            KEYWORD_DICTIONARY = "dictionary",
-            KEYWORD_FUNCTION = "function",
+            KEYWORD_DICTIONARY = "dict",
+            KEYWORD_BLOCK = "block",
+            KEYWORD_FUNCTION = "func",
             KEYWORD_CLASS = "class",
             KEYWORD_CONST = "const",
             KEYWORD_STATIC = "static",
             KEYWORD_PRIVATE = "private",
-            KEYWORD_GLOBAL = "global";
+            KEYWORD_GLOBAL = "global",
+            KEYWORD_PRIOR = "prior";
         
 
 
         public NodeType baseType;
         public NodeType returnedType;
         public string word;
+        public StringBuilder? str;
         public char endToken = ' ';
         public bool isBracket = false;
         public List<Node> child = new();
@@ -128,6 +134,17 @@ namespace SolidTPC {
                 if (names == null) names = new Dictionary<string, DefinedName>();
                 return names;
             }
+        }
+
+        /**
+            <summary>
+            ノード内に指定した名前の宣言があるかどうかを返す
+            リストが未生成の際に生成しない
+            </summary>
+        */
+        public bool HasKeyInNames(string name) {
+            if (names == null) return false;
+            return names.ContainsKey(name);
         }
 
         // 宣言時
@@ -199,6 +216,63 @@ namespace SolidTPC {
         }
 
 
+        /**
+            <summary>
+            スコープに定義名があるかどうか確認し、あればDefinedNameを、なければnullを返す<br />
+            nestは0ならば現在のスコープにあることを意味し、1以上ならそれ以降、-1ならばルートにあることを意味する
+            </summary>
+        */
+        public static DefinedName? GetName(Node currentNode, string name, ref int nest) {
+
+            nest = 0;
+
+            Node? p = null;
+            gcn(currentNode, ref nest);
+
+            if (p == null) {
+
+                return null;
+            } else {
+
+                return p.Names[name];
+            }
+
+
+            void gcn(Node nd, ref int nt) {
+
+                if (nd.HasKeyInNames(name)) {
+                    p = nd;
+                    if (nd.parent == null && nt != 0) nt = -1;
+                    return;
+                }
+
+                if (nd.parent != null) {
+                    if (nd.isBracket) nt++;
+                    gcn(nd.parent, ref nt);
+                }
+            }
+        }
+
+
+        public static Node GetNearestBlock(Node currentNode) {
+
+            gn(currentNode);
+            Node node;
+
+            void gn(Node nd) {
+
+                if (nd.baseType == NodeType.BLOCK) {
+                    node = nd;
+                    return;
+                }
+
+                gn(nd.parent);
+            }
+
+            return node;
+        }
+
+
         /** 
             <summary>
             数値配列でアドレスを指定してツリー内からノードを返す<br />
@@ -248,23 +322,73 @@ namespace SolidTPC {
         }
     }
 
-
-    class DefinedName {
-
-        public Node link;
-
-        public bool isConst = false;
-        public bool isStatic = false;
-        public bool isPrivate = false;
-
-        public DefinedName(Node link) {
-            this.link = link;
-        }
-    }
+    /**
+        宣言された変数・クラス・関数の情報
+        Node.Namesに保管される
+        linkはTypeノードへと接続される
+    */
 
     public enum NameType {
         VARIABLE,
         CLASS,
         FUNCTION
+    }
+
+    public enum ModifierType {
+        CONST,
+        STATIC,
+        PRIOR,
+        PRIVATE,
+        GLOBAL
+    }
+
+    class DefinedName {
+
+        public Node link;
+        public Node? classLink;  // クラスのインスタンスである場合、大元のクラスの定義のノードへのリンク
+        public Node? value;
+
+        public bool isClassMember = false;
+
+        public NameType type = NameType.VARIABLE;
+
+        private bool[] modifiers = new bool[] { false, false, false, false, false };
+
+        public bool isConst {
+            get { return modifiers[(int)ModifierType.CONST]; }
+            set { modifiers[(int)ModifierType.CONST] = value; }
+        }
+
+        public bool isStatic {
+            get { return modifiers[(int)ModifierType.STATIC]; }
+            set { modifiers[(int)ModifierType.STATIC] = value; }
+        }
+
+        public bool isPrior {
+            get { return modifiers[(int)ModifierType.PRIOR]; }
+            set { modifiers[(int)ModifierType.PRIOR] = value; }
+        }
+
+        public bool isPrivate {
+            get { return modifiers[(int)ModifierType.PRIVATE]; }
+            set { modifiers[(int)ModifierType.PRIVATE] = value; }
+        }
+
+        public bool isGlobal {
+            get { return modifiers[(int)ModifierType.GLOBAL]; }
+            set { modifiers[(int)ModifierType.GLOBAL] = value; }
+        }
+
+        public void SetModifier(ModifierType modifierType, bool value) {
+            modifiers[(int)modifierType] = value;
+        }
+
+        public void SetModifier(int modifierType, bool value) {
+            modifiers[modifierType] = value;
+        }
+
+        public DefinedName(Node link) {
+            this.link = link;
+        }
     }
 }

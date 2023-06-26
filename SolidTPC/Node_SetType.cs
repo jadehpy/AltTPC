@@ -13,6 +13,49 @@ namespace SolidTPC {
     partial class NodeController {
 
 
+
+        // ======================================================================================================================================================
+
+        // 修飾子を付加
+
+        //public static void SetModifier(DefinedName dn, Node typeNode, ref bool isPrior, ref bool isGlobal) {
+
+        //    isPrior = false;
+        //    isGlobal = false;
+
+        //    sm(typeNode.parent, ref isPrior, ref isGlobal);
+
+        //    void sm(Node n, ref bool isPr, ref bool isGl) {
+
+        //        if (n.baseType == NodeType.MODIFIER) {
+
+        //            switch (n.word) {
+
+        //                case Node.KEYWORD_PRIOR:
+        //                    isPr = true;
+        //                    break;
+
+        //                case Node.KEYWORD_GLOBAL:
+        //                    isGl = true;
+        //                    break;
+
+        //                case Node.KEYWORD_STATIC:
+        //                    dn.isStatic = true;
+        //                    break;
+
+        //                case Node.KEYWORD_PRIVATE:
+        //                    dn.isPrivate = true;
+        //                    break;
+
+        //                case Node.KEYWORD_CONST:
+        //                    dn.isConst = true;
+        //                    break;
+        //            }
+        //        }
+        //    }
+        //}
+
+
         // ======================================================================================================================================================
 
         // ノードの種類判別
@@ -28,7 +71,6 @@ namespace SolidTPC {
         static string[] opr_compare = new[] { ">", "<", ">=", "<=" };
         static string[] opr_asg = new[] { "=", "+=", "-=", "*=", "/=", "%=", "|=", "&=", "^=", "<<=", ">>=" };
         static string[] types = new[] { Node.KEYWORD_NUMBER, Node.KEYWORD_STRING, Node.KEYWORD_ARRAY, Node.KEYWORD_DICTIONARY };
-        static string[] modifiers = new[] { Node.KEYWORD_CONST, Node.KEYWORD_STATIC, Node.KEYWORD_PRIVATE, Node.KEYWORD_GLOBAL };
 
         /**
             <summary>
@@ -270,26 +312,95 @@ namespace SolidTPC {
                     Parser.SubCommand = node.word.ToLower();
                     node.hasChild = true;
 
+
                 } else if (wl == Node.KEYWORD_CLASS) {  // クラス
 
-                    node.baseType = NodeType.CLASS;
+                    node.baseType = NodeType.DECL_CLASS;
                     node.hasChild = true;
+
 
                 } else if (wl == Node.KEYWORD_FUNCTION) {  // 関数
 
-                    node.baseType = NodeType.FUNCTION;
+                    node.baseType = NodeType.DECL_FUNCTION;
                     node.hasChild = true;
 
-                } else if (types.Contains(wl)) {  // 型
+
+                } else if (wl == Node.KEYWORD_NUMBER) {  // 型 : number 
 
                     node.baseType = NodeType.TYPE;
+                    node.value = (int)NodeType.NUMBER;
                     node.hasChild = true;
 
-                } else if (modifiers.Contains(wl)) {  // 宣言時の修飾子
+
+                } else if (wl == Node.KEYWORD_STRING) {  // 型 : string
+
+                    node.baseType = NodeType.TYPE;
+                    node.value = (int)NodeType.STRING;
+                    node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_BOOL) {  // 型 : bool
+
+                    node.baseType = NodeType.TYPE;
+                    node.value = (int)NodeType.BOOL;
+                    node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_ARRAY) {  // 型 : array
+
+                    node.baseType = NodeType.TYPE;
+                    node.value = (int)NodeType.ARRAY;
+                    node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_DICTIONARY) {  // 型 : dictionary
+
+                    node.baseType = NodeType.TYPE;
+                    node.value = (int)NodeType.DICTIONARY;
+                    node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_BLOCK) {  // 型 : block
+
+                    node.baseType = NodeType.TYPE;
+                    node.value = (int)NodeType.BLOCK;
+                    node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_CONST) {  // 修飾子 : const
 
                     node.baseType = NodeType.MODIFIER;
-                    node.word = wl;
+                    node.value = (int)ModifierType.CONST;
                     node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_STATIC) {  // 修飾子 : static
+
+                    node.baseType = NodeType.MODIFIER;
+                    node.value = (int)ModifierType.STATIC;
+                    node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_PRIOR) {  // 修飾子 : prior
+
+                    node.baseType = NodeType.MODIFIER;
+                    node.value = (int)ModifierType.PRIOR;
+                    node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_PRIVATE) {  // 修飾子 : private
+
+                    node.baseType = NodeType.MODIFIER;
+                    node.value = (int)ModifierType.PRIVATE;
+                    node.hasChild = true;
+
+
+                } else if (wl == Node.KEYWORD_GLOBAL) {  // 修飾子 : global
+
+                    node.baseType = NodeType.MODIFIER;
+                    node.value = (int)ModifierType.GLOBAL;
+                    node.hasChild = true;
+
 
                 } else {  // 何らかの定義名 (固有引数・組み込みメソッド・クラス名・クラスメソッド)
 

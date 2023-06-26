@@ -46,6 +46,9 @@ namespace SolidTPC {
         public static bool resolve_all = false;
         public static bool resolve_any = false;
 
+        // GetNameでのネストチェック用
+        public static int nest = 0;
+
 
         // ◆インタプリタのメイン処理 ====================================================================================================
 
@@ -168,7 +171,7 @@ namespace SolidTPC {
                         if (c == '\n') {
 
                             NodeUp();
-                            node.parent.child.RemoveAt(node.child.Count - 1);
+                            node.parent.child.RemoveAt(node.parent.child.Count - 1);
 
                         }
 
@@ -186,7 +189,7 @@ namespace SolidTPC {
                         if (word.ToString() == "*/") {
 
                             NodeUp();
-                            node.parent.child.RemoveAt(node.child.Count - 1);
+                            node.parent.child.RemoveAt(node.parent.child.Count - 1);
                             word.Clear();
 
                         } else {
@@ -217,8 +220,6 @@ namespace SolidTPC {
 
 
                         void AddNode(string token) {
-
-                            //m.s(NodesToString(tree));
 
                             // セミコロンで一番直近のブロックノードに遡る
 
@@ -332,26 +333,37 @@ namespace SolidTPC {
 
                                 } else {  // 生成したノードが複項演算子でない場合
 
-                                    // 名前に丸括弧を付けた場合、名前の子に丸括弧を挿入
-                                    if (n.baseType == NodeType.BRACKET && node.oprArgumentNum < 1 && node.child.Count > 0 && node.child.Last().baseType == NodeType.NAME && !node.child.Last().isClosed) {
+                                    Node? last = node.child.Count > 0 && !node.child.Last().isClosed ? node.child.Last() : null;  // 閉じていない直近のノード
 
-                                        node.child.Last().child.Add(n);
-                                        n.parent = node.child.Last();
-                                        n.parent.hasChild = true;
+                                    if (n.baseType == NodeType.BRACKET && node.oprArgumentNum < 1 && last != null && last.baseType == NodeType.NAME) {
+
+                                        // 名前に丸括弧を付けた場合、名前の子に丸括弧を挿入
+
+                                        last.child.Add(n);
+                                        n.parent = last;
+                                        last.hasChild = true;
                                         NodeDown();
                                         NodePosition.Add(0);
 
-                                    } else if (n.baseType == NodeType.BRACKET_SQUARE_ARR && node.child.Count > 0 && !node.child.Last().isClosed) {
+                                    } else if (n.baseType == NodeType.BRACKET_SQUARE_ARR && last != null) {
 
                                         // 直前のノードが閉じてない状態で鍵括弧をつけた場合、インデックスアクセス
 
                                         n.baseType = NodeType.BRACKET_SQUARE_IDX;
-                                        var n_ = node.child.Last();
                                         node.child.RemoveAt(node.child.Count - 1);
                                         node.child.Add(n);
                                         n.parent = node;
-                                        n.child.Add(n_);
-                                        n_.parent = n;
+                                        n.child.Add(last);
+                                        last.parent = n;
+                                        NodeDown();
+
+                                    } else if (n.baseType == NodeType.NAME && last != null && last.baseType == NodeType.NAME) {
+
+                                        // 生成したノードとその直前のノードがNAMEである場合、ネストさせる
+
+                                        last.child.Add(n);
+                                        n.parent = last;
+                                        last.hasChild = true;
                                         NodeDown();
 
                                     } else {
@@ -429,6 +441,8 @@ namespace SolidTPC {
                             if (separator.Contains(c)) {  // 終端文字である場合
 
                                 string tkn = word.ToString() + c;
+
+                                wasOperator = false;
 
                                 if (beginStr.Contains(tkn)) {  // 現在格納中の文字列 + 読み込んだ文字　が1個の開始記号である場合
 
@@ -600,13 +614,24 @@ namespace SolidTPC {
             string gn(Node nd, int nest) {
 
                 StringBuilder s = new(getn(nest) + nd.baseType.ToString() + " -> " + nd.returnedType.ToString() + ": " + nd.word);
-                if (nd.isClosed) s.Append(" (Closed)");
+
+                if (nd.isClosed) s.Append(" (Closed)").Insert(0, "\r\n");
+                if (nd.baseType == NodeType.BLOCK) {
+                    s.Insert(0, "\r\n");
+                    if (nd.Names != null) {
+                        s.Append($"\r\n{getn(nest)}Names : ");
+                        foreach (var i in nd.Names) {
+                            s.Append($"\r\n    {getn(nest)}{i.Value.link.child[0].word} ({i.Value.link.word})");
+                        }
+                    }
+                }
                 if (nd.returnedType == NodeType.NUMBER) s.Append(nd.isFloat ? $" (value : {nd.value_f})" : $" (value : {nd.value})");
                 if (nd.returnedType == NodeType.TKV_V || nd.returnedType == NodeType.TKV_VV || 
                     nd.returnedType == NodeType.TKV_S || nd.returnedType == NodeType.TKV_SV ||
                     nd.returnedType == NodeType.TKV_T || nd.returnedType == NodeType.TKV_TV) {
                     s.Append($" (value : {nd.value})");
                 }
+                if (nd.returnedType == NodeType.MODIFIER) s.Append($" (ModifierType : {(ModifierType)nd.value})");
                 s.Append("\r\n");
                 foreach (var n in nd.child) {
                     s.Append(gn(n, nest + 1));
