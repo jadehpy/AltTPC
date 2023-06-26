@@ -1,6 +1,6 @@
 # SolidTPC
 <br>
-TPCの方言です。<br>
+TPCの方言（代替言語）です。<br>
 従来の文法のゆるくてふわふわした部分を刈り取ってより厳密にし、かつ便利にする目的で作られています。
 <br><br>
 細かい解説は<a href="https://github.com/jadehpy/SolidTPC/wiki">リポジトリのWikiページ</a> へ。
