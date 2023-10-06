@@ -1,2 +1,0 @@
-let asd = 1;
-Console.log(asd);
